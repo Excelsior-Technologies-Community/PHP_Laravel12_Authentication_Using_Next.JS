@@ -1,36 +1,60 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
+import { Navbar } from "@/components/navbar";
+import { Button } from "@/components/ui/button";
 
 export default function Dashboard() {
-  const [user, setUser] = useState<any>(null);
+  const router = useRouter();
+  const { user, loading } = useAuth();
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    fetch("/backend/me", {
-      credentials: "include",
-    })
-      .then(res => res.json())
-      .then(data => setUser(data));
+    setMounted(true);
   }, []);
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="bg-white p-8 rounded-lg shadow text-center w-96">
-        <h2 className="text-2xl font-bold mb-2">
-          Welcome {user?.name ?? "User"} 👋
-        </h2>
+  useEffect(() => {
+    if (mounted && !loading && !user) {
+      router.push("/login");
+    }
+  }, [mounted, loading, user, router]);
 
-        <p className="text-gray-600 mb-6">
-          You are logged in successfully 🎉
-        </p>
-
-        <a
-          href="/backend/logout"
-          className="inline-block bg-red-600 text-white px-6 py-2 rounded"
-        >
-          Logout
-        </a>
+  if (!mounted || loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Navbar />
+
+      <main className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+        <div className="bg-white/80 backdrop-blur-sm p-8 rounded-2xl shadow-lg border border-border text-center">
+          <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <span className="text-3xl">👋</span>
+          </div>
+          <h2 className="text-3xl font-bold text-foreground mb-2">
+            Welcome {user.name}
+          </h2>
+          <p className="text-gray-500 mb-8">
+            You are logged in successfully 🎉
+          </p>
+          <div className="flex justify-center gap-4">
+            <Button onClick={() => router.push("/profile")}>
+              View Profile
+            </Button>
+          </div>
+        </div>
+      </main>
     </div>
   );
 }
