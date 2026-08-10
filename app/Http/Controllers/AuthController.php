@@ -3,41 +3,80 @@
 namespace App\Http\Controllers;
 
 use App\Models\Auth;
+use App\Models\ActivityLog;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Session;
+use App\Http\Requests\LoginRequest;
+use App\Http\Requests\RegisterRequest;
 
 class AuthController extends Controller
 {
-    // REGISTER
-    public function register(Request $request)
-{
-    Auth::create([
-        'name' => $request->name,
-        'email' => $request->email,
-        'password' => Hash::make($request->password)
-    ]);
+    public function register(RegisterRequest $request): JsonResponse
+    {
+        $validated = $request->validated();
 
-    // 🔥 redirect to Next.js login
-    return redirect('http://localhost:3000/login');
-}
+        $user = Auth::create([
+            'name' => strip_tags($validated['name']),
+            'email' => strtolower(trim($validated['email'])),
+            'password' => Hash::make($validated['password']),
+            'status' => 'active',
+            'email_verified_at' => null,
+        ]);
 
-// LOGIN
-public function login(Request $request)
-{
-    $user = Auth::where('email', $request->email)->first();
+        $token = $user->createToken('auth_token')->plainTextToken;
 
-    if (!$user || !Hash::check($request->password, $user->password)) {
-        return redirect('http://localhost:3000/login');
+        return response()->json([
+            'success' => true,
+            'message' => 'Registration successful',
+            'data' => [
+                'user' => $user,
+                'token' => $token,
+            ],
+        ], 201);
     }
 
-    Session::put('auth_user', $user);
+    public function login(LoginRequest $request): JsonResponse
+    {
+        $validated = $request->validated();
 
-    // 🔥 redirect to Next.js dashboard
-    return redirect('http://localhost:3000/dashboard');
-}
+        $user = Auth::where('email', strtolower(trim($validated['email'])))->first();
 
-    // DASHBOARD
+        if (!$user || !Hash::check($validated['password'], $user->password)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid email or password',
+            ], 401);
+        }
+
+        if ($user->status === 'banned') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Your account has been banned. Please contact support.',
+            ], 403);
+        }
+
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        ActivityLog::create([
+            'auth_id' => $user->id,
+            'action' => 'login',
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+            'metadata' => null,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Login successful',
+            'data' => [
+                'user' => $user,
+                'token' => $token,
+            ],
+        ]);
+    }
+
     public function dashboard()
     {
         if (!Session::has('auth_user')) {
@@ -47,13 +86,27 @@ public function login(Request $request)
         return view('dashboard');
     }
 
-    // LOGOUT
-   public function logout()
-{
-    Session::forget('auth_user');
+    public function logout(Request $request): JsonResponse
+    {
+        $user = $request->user('sanctum');
 
-    // 🔥 redirect to Next.js login page
-    return redirect('http://localhost:3000/login');
-}
+        if ($user) {
+            ActivityLog::create([
+                'auth_id' => $user->id,
+                'action' => 'logout',
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'metadata' => null,
+            ]);
 
+            $user->tokens()->delete();
+        }
+
+        Session::forget('auth_user');
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Logged out successfully',
+        ]);
+    }
 }
