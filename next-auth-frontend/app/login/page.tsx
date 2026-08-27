@@ -44,10 +44,19 @@ export default function Login() {
 
       const result = await res.json();
 
-      if (!res.ok) {
-        toast.error(result.message || "Login failed");
-        return;
-      }
+if (!res.ok) {
+    if (result.email_verification_required) {
+        toast.error(
+            "Please verify your email before logging in."
+        );
+    } else {
+        toast.error(
+            result.message || "Login failed"
+        );
+    }
+
+    return;
+}
 
       login(result.data.user, result.data.token, data.remember || false);
       toast.success("Login successful!");
@@ -82,6 +91,15 @@ export default function Login() {
             error={errors.password?.message}
             {...register("password")}
           />
+
+          <div className="flex justify-end">
+            <Link
+              href="/forgot-password"
+              className="text-sm text-primary font-medium hover:underline"
+            >
+              Forgot password?
+            </Link>
+          </div>
 
           <div className="flex items-center gap-2">
             <input
