@@ -5,7 +5,7 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rules\Password;
 
-class RegisterRequest extends FormRequest
+class ResetPasswordRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -15,17 +15,14 @@ class RegisterRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => [
+            'token' => [
                 'required',
                 'string',
-                'max:255',
             ],
 
             'email' => [
                 'required',
                 'email',
-                'max:255',
-                'unique:auth,email',
             ],
 
             'password' => [
@@ -41,11 +38,10 @@ class RegisterRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'name.required' => 'Name is required',
+            'token.required' => 'Reset token is required',
 
             'email.required' => 'Email is required',
             'email.email' => 'Please enter a valid email',
-            'email.unique' => 'This email is already registered',
 
             'password.required' => 'Password is required',
             'password.confirmed' => 'Password confirmation does not match',
