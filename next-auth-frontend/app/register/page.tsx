@@ -60,9 +60,11 @@ export default function Register() {
         return;
       }
 
-      login(result.data.user, result.data.token, false);
-      toast.success("Registration successful!");
-      router.push("/dashboard");
+toast.success(
+  "Registration successful! Please verify your email."
+);
+
+router.push("/verify-email");
     } catch {
       toast.error("Something went wrong");
     } finally {
